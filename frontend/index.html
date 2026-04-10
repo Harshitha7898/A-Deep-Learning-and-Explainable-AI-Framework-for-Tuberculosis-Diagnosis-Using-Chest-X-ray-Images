@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TB Detection Web App</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #0f142e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(79, 172, 254, 0.2);
+            border: 1px solid #4facfe;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+        .upload-area {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px dashed #4facfe;
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 2rem;
+        }
+        .upload-area:hover {
+            background: rgba(79, 172, 254, 0.1);
+            border-color: #00f2fe;
+        }
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        .upload-text {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        .upload-subtext {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        .preview-container {
+            text-align: center;
+            margin-bottom: 2rem;
+            display: none;
+        }
+        .preview-image {
+            max-width: 300px;
+            max-height: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 2px solid #4facfe;
+        }
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .model-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 1rem;
+            text-align: center;
+            border-left: 3px solid #4facfe;
+        }
+        .model-name {
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 0.5rem;
+        }
+        .model-desc {
+            font-size: 0.8rem;
+            color: #888;
+        }
+        .submit-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-weight: bold;
+        }
+        .submit-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+        }
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            margin: 2rem;
+            display: none;
+        }
+        .spinner {
+            border: 3px solid rgba(79, 172, 254, 0.3);
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .footer {
+            margin-top: 3rem;
+            text-align: center;
+            color: #666;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>TB Detection Web App</h1>
+            <p>AI-Powered Clinical Decision Support System</p>
+            <div class="badge">
+                For Clinical Use Only | Multi-Model Ensemble | XAI Explanations
+            </div>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📤</div>
+            <div class="upload-text">Drag & Drop or Click to Upload</div>
+            <div class="upload-subtext">Supports PNG, JPG, JPEG (Chest X-ray images only)</div>
+            <input type="file" id="fileInput" accept="image/*" style="display: none;">
+        </div>
+
+        <div class="preview-container" id="previewContainer">
+            <img id="previewImage" class="preview-image" alt="Preview">
+        </div>
+
+        <div class="models-grid">
+            <div class="model-card">
+                <div class="model-name">ConvNeXt-Tiny</div>
+                <div class="model-desc">State-of-the-art CNN architecture</div>
+            </div>
+            <div class="model-card">
+                <div class="model-name">Vision Transformer (ViT)</div>
+                <div class="model-desc">Attention-based transformer model</div>
+            </div>
+            <div class="model-card">
+                <div class="model-name">Swin Transformer</div>
+                <div class="model-desc">Hierarchical transformer</div>
+            </div>
+            <div class="model-card">
+                <div class="model-name">Ensemble (ConvNeXt + ViT)</div>
+                <div class="model-desc">Averaged softmax predictions</div>
+            </div>
+        </div>
+
+        <button class="submit-btn" id="submitBtn" disabled>Analyze Chest X-Ray</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Analyzing image with all models...</p>
+        </div>
+
+        <div class="footer">
+            Clinical Disclaimer: This tool is for clinical decision support only. 
+            Final diagnosis should be made by qualified healthcare professionals.
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const previewImage = document.getElementById('previewImage');
+        const submitBtn = document.getElementById('submitBtn');
+        const loading = document.getElementById('loading');
+        
+        let currentFile = null;
+
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = 'rgba(79, 172, 254, 0.2)';
+        });
+
+        uploadArea.addEventListener('dragleave', (e) => {
+            uploadArea.style.background = 'rgba(255, 255, 255, 0.05)';
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.style.background = 'rgba(255, 255, 255, 0.05)';
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            currentFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                submitBtn.disabled = false;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        submitBtn.addEventListener('click', async () => {
+            if (!currentFile) return;
+
+            const formData = new FormData();
+            formData.append('file', currentFile);
+
+            loading.style.display = 'block';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) throw new Error('Prediction failed');
+
+                const data = await response.json();
+                
+                sessionStorage.setItem('predictions', JSON.stringify(data.predictions));
+                sessionStorage.setItem('image', data.image);
+                
+                window.location.href = '/results';
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error analyzing image. Please try again.');
+                loading.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

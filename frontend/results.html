@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TB Detection Results | Clinical Decision Support</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #0f142e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid rgba(79, 172, 254, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 1.8rem;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .back-btn {
+            background: rgba(79, 172, 254, 0.2);
+            color: #4facfe;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(79, 172, 254, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        /* Verdict Banner */
+        .verdict-banner {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.2), rgba(0, 242, 254, 0.2));
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            border: 1px solid rgba(79, 172, 254, 0.5);
+            animation: fadeIn 0.5s ease-in;
+        }
+        
+        .verdict-label {
+            font-size: 1.2rem;
+            color: #888;
+            margin-bottom: 0.5rem;
+            letter-spacing: 1px;
+        }
+        
+        .verdict-result {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            animation: slideUp 0.5s ease-out;
+        }
+        
+        .verdict-result.tb { color: #ff4757; text-shadow: 0 0 10px rgba(255, 71, 87, 0.3); }
+        .verdict-result.normal { color: #2ed573; text-shadow: 0 0 10px rgba(46, 213, 115, 0.3); }
+        
+        .verdict-confidence {
+            font-size: 1.2rem;
+            color: #4facfe;
+            margin: 0.5rem 0;
+        }
+        
+        .agreement-badge {
+            display: inline-block;
+            background: rgba(79, 172, 254, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        /* Two Column Layout */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .image-card, .table-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s;
+        }
+        
+        .image-card:hover, .table-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .image-card h3, .table-card h3 {
+            margin-bottom: 1rem;
+            color: #4facfe;
+            font-size: 1.3rem;
+        }
+        
+        .xray-image {
+            max-width: 100%;
+            border-radius: 10px;
+            border: 2px solid #4facfe;
+            transition: transform 0.3s;
+        }
+        
+        .xray-image:hover {
+            transform: scale(1.02);
+        }
+        
+        /* Results Table */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .results-table th, .results-table td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .results-table th {
+            color: #4facfe;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .confidence-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 25px;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            border-radius: 12px;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .best-model {
+            background: rgba(79, 172, 254, 0.2);
+            border-left: 3px solid #4facfe;
+        }
+        
+        /* Model Comparison Section */
+        .comparison-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .comparison-section h3 {
+            color: #4facfe;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .model-comparison {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .model-metrics {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s;
+            border: 1px solid rgba(79, 172, 254, 0.2);
+        }
+        
+        .model-metrics:hover {
+            transform: translateY(-3px);
+            border-color: #4facfe;
+        }
+        
+        .model-metrics .model-name {
+            font-weight: bold;
+            color: #4facfe;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+        
+        .metric {
+            margin: 0.5rem 0;
+        }
+        
+        .metric-value {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #00f2fe;
+        }
+        
+        .best-badge {
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            color: #1a1a2e;
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-top: 0.5rem;
+            font-weight: bold;
+        }
+        
+        /* XAI Section */
+        .xai-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .xai-section h3 {
+            color: #4facfe;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .model-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            background: rgba(79, 172, 254, 0.2);
+            border: none;
+            color: #e0e0e0;
+            padding: 0.6rem 1.2rem;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+        
+        .tab-btn:hover {
+            background: rgba(79, 172, 254, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+        }
+        
+        .xai-content { display: none; }
+        .xai-content.active { display: block; animation: fadeIn 0.3s ease; }
+        
+        .xai-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+        
+        .xai-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .xai-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.2);
+        }
+        
+        .xai-card h4 {
+            color: #4facfe;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+        
+        .xai-image { 
+            max-width: 100%; 
+            border-radius: 8px; 
+            margin-top: 0.5rem;
+            border: 2px solid #4facfe;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .xai-image:hover {
+            transform: scale(1.05);
+        }
+        
+        .generate-btn {
+            background: linear-gradient(135deg, #ff4757, #ff6b81);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 0.8rem;
+            transition: all 0.3s;
+            font-size: 0.85rem;
+        }
+        
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(255, 71, 87, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #4facfe;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(79, 172, 254, 0.3);
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .error { color: #ff4757; padding: 1rem; text-align: center; }
+        .cached-badge { font-size: 0.7rem; color: #4facfe; margin-top: 5px; }
+        
+        /* Explanation Section */
+        .explanation-section {
+            background: linear-gradient(135deg, rgba(79, 172, 254, 0.15), rgba(0, 242, 254, 0.1));
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .explanation-section h3 {
+            color: #4facfe;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+        
+        .explanation-text {
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+        
+        .recommendation {
+            background: rgba(79, 172, 254, 0.2);
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+            border-left: 3px solid #00f2fe;
+        }
+        
+        .disclaimer {
+            text-align: center;
+            color: #666;
+            font-size: 0.8rem;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Loading Overlay */
+        .batch-load {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+        
+        .batch-load:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 10px rgba(79, 172, 254, 0.3);
+        }
+        
+        @media (max-width: 768px) {
+            .two-column, .xai-grid {
+                grid-template-columns: 1fr;
+            }
+            .container { padding: 1rem; }
+            .verdict-result { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔬 TB Detection Results | Clinical Decision Support</h1>
+            <a href="/" class="back-btn">← New Analysis</a>
+        </div>
+
+        <div id="verdictBanner"></div>
+
+        <div class="two-column">
+            <div class="image-card">
+                <h3>📷 Chest X-Ray Image</h3>
+                <img id="xrayImage" class="xray-image" alt="Chest X-Ray">
+            </div>
+            <div class="table-card">
+                <h3>🤖 Model Predictions & Confidence</h3>
+                <table class="results-table">
+                    <thead>
+                        <tr><th>Model</th><th>Prediction</th><th>Confidence</th><th>Status</th>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                 </table>
+            </div>
+        </div>
+
+        <!-- Best Model Comparison -->
+        <div class="comparison-section">
+            <h3>🏆 Model Performance Analysis</h3>
+            <div id="modelComparison" class="model-comparison"></div>
+        </div>
+
+        <!-- Detailed Explanation -->
+        <div class="explanation-section" id="explanationSection">
+            <h3>📋 Clinical Interpretation & Recommendations</h3>
+            <div id="explanationText" class="explanation-text"></div>
+        </div>
+
+        <!-- XAI Section -->
+        <div class="xai-section">
+            <h3>🔍 Explainable AI - Model Interpretability</h3>
+            <button class="batch-load" onclick="loadAllXAI()">⚡ Load All XAI Visualizations (Cached)</button>
+            <div class="model-tabs">
+                <button class="tab-btn active" data-model="convnext">🖼️ ConvNeXt-Tiny</button>
+                <button class="tab-btn" data-model="vit">🎯 Vision Transformer (ViT)</button>
+                <button class="tab-btn" data-model="swin">🏆 Swin Transformer</button>
+            </div>
+            
+            <div id="convnext" class="xai-content active">
+                <div class="xai-grid">
+                    <div class="xai-card">
+                        <h4>🔥 Grad-CAM++ Heatmap</h4>
+                        <div id="convnext-gradcam"></div>
+                    </div>
+                    <div class="xai-card">
+                        <h4>📊 Captum Integrated Gradients</h4>
+                        <div id="convnext-captum"></div>
+                    </div>
+                    <div class="xai-card">
+                        <h4>🎯 Occlusion Sensitivity</h4>
+                        <div id="convnext-occlusion"></div>
+                        <button class="generate-btn" onclick="generateOcclusion('convnext')">⏱️ Generate (60 sec)</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="vit" class="xai-content">
+                <div class="xai-grid">
+                    <div class="xai-card">
+                        <h4>🔥 Grad-CAM++ Heatmap</h4>
+                        <div id="vit-gradcam"></div>
+                    </div>
+                    <div class="xai-card">
+                        <h4>📊 Captum Integrated Gradients</h4>
+                        <div id="vit-captum"></div>
+                    </div>
+                    <div class="xai-card">
+                        <h4>🎯 Occlusion Sensitivity</h4>
+                        <div id="vit-occlusion"></div>
+                        <button class="generate-btn" onclick="generateOcclusion('vit')">⏱️ Generate (60 sec)</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="swin" class="xai-content">
+                <div class="xai-grid">
+                    <div class="xai-card">
+                        <h4>🔥 Grad-CAM++ Heatmap</h4>
+                        <div id="swin-gradcam"></div>
+                    </div>
+                    <div class="xai-card">
+                        <h4>📊 Captum Integrated Gradients</h4>
+                        <div id="swin-captum"></div>
+                    </div>
+                    <div class="xai-card">
+                        <h4>🎯 Occlusion Sensitivity</h4>
+                        <div id="swin-occlusion"></div>
+                        <button class="generate-btn" onclick="generateOcclusion('swin')">⏱️ Generate (60 sec)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="disclaimer">
+            ⚠️ Clinical Disclaimer: This tool is for clinical decision support only. Final diagnosis should be made by qualified healthcare professionals. XAI visualizations highlight regions of interest but should be interpreted by trained radiologists.
+        </div>
+    </div>
+
+    <script>
+        let predictions = null;
+        let xaiCache = {};
+        let loadingModels = {};
+
+        window.addEventListener('load', () => {
+            const predictionsStr = sessionStorage.getItem('predictions');
+            const imageStr = sessionStorage.getItem('image');
+            
+            if (!predictionsStr || !imageStr) {
+                alert('No analysis data found. Please upload an image first.');
+                window.location.href = '/';
+                return;
+            }
+            
+            predictions = JSON.parse(predictionsStr);
+            document.getElementById('xrayImage').src = imageStr;
+            
+            displayResults();
+            displayModelComparison();
+            generateDetailedExplanation();
+            
+            // Load XAI for first model
+            loadAllXAIForModel('convnext');
+        });
+        
+        function displayResults() {
+            const final = predictions.final;
+            const verdictDiv = document.getElementById('verdictBanner');
+            const verdictClass = final.label === 'Tuberculosis' ? 'tb' : 'normal';
+            
+            let agreementText = '';
+            if (final.agreement_count === 3) {
+                agreementText = '✅ Strong Agreement - All models unanimously agree';
+            } else if (final.agreement_count === 2) {
+                agreementText = '⚠️ Majority Consensus - 2 out of 3 models agree';
+            } else {
+                agreementText = '❓ Low Agreement - Models show disagreement';
+            }
+            
+            verdictDiv.innerHTML = `
+                <div class="verdict-label">🏥 Clinical Verdict</div>
+                <div class="verdict-result ${verdictClass}">${final.label}</div>
+                <div class="verdict-confidence">📊 Confidence Score: ${final.confidence}%</div>
+                <div class="agreement-badge">🤝 ${agreementText}</div>
+            `;
+            
+            const tableBody = document.getElementById('tableBody');
+            tableBody.innerHTML = '';
+            
+            const models = ['convnext', 'vit', 'swin', 'ensemble'];
+            const modelNames = {
+                'convnext': 'ConvNeXt-Tiny',
+                'vit': 'Vision Transformer (ViT)',
+                'swin': 'Swin Transformer',
+                'ensemble': 'Ensemble (ConvNeXt + ViT)'
+            };
+            
+            // Find best model
+            let bestModel = null;
+            let bestConfidence = 0;
+            for (const model of models) {
+                if (predictions[model] && predictions[model].confidence > bestConfidence) {
+                    bestConfidence = predictions[model].confidence;
+                    bestModel = model;
+                }
+            }
+            
+            for (const model of models) {
+                if (predictions[model]) {
+                    const pred = predictions[model];
+                    const row = tableBody.insertRow();
+                    if (model === bestModel) row.classList.add('best-model');
+                    
+                    row.insertCell(0).innerHTML = model === bestModel ? `🏆 ${modelNames[model]}` : modelNames[model];
+                    row.insertCell(1).innerHTML = pred.label === 'Tuberculosis' ? 
+                        '<span style="color: #ff4757; font-weight: bold;">🔴 Tuberculosis</span>' : 
+                        '<span style="color: #2ed573; font-weight: bold;">🟢 Normal</span>';
+                    
+                    const confidencePercent = pred.confidence;
+                    row.insertCell(2).innerHTML = `
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${confidencePercent}%">${confidencePercent}%</div>
+                        </div>
+                    `;
+                    row.insertCell(3).innerHTML = model === bestModel ? '🏆 Best Performing' : '';
+                }
+            }
+        }
+        
+        function displayModelComparison() {
+            const comparisonDiv = document.getElementById('modelComparison');
+            const models = ['convnext', 'vit', 'swin'];
+            const modelFullNames = {
+                'convnext': 'ConvNeXt-Tiny',
+                'vit': 'Vision Transformer',
+                'swin': 'Swin Transformer'
+            };
+            
+            let bestConfidence = 0;
+            let bestModelName = '';
+            
+            for (const model of models) {
+                if (predictions[model] && predictions[model].confidence > bestConfidence) {
+                    bestConfidence = predictions[model].confidence;
+                    bestModelName = modelFullNames[model];
+                }
+            }
+            
+            let html = '';
+            for (const model of models) {
+                if (predictions[model]) {
+                    const pred = predictions[model];
+                    const isBest = pred.confidence === bestConfidence;
+                    const confidenceColor = pred.confidence >= 90 ? '#2ed573' : (pred.confidence >= 70 ? '#ffb347' : '#ff4757');
+                    
+                    html += `
+                        <div class="model-metrics" style="${isBest ? 'border: 2px solid #4facfe;' : ''}">
+                            <div class="model-name">${modelFullNames[model]}</div>
+                            <div class="metric">📊 Confidence: <span class="metric-value" style="color: ${confidenceColor};">${pred.confidence}%</span></div>
+                            <div class="metric">🎯 Prediction: <span style="color: ${pred.label === 'Tuberculosis' ? '#ff4757' : '#2ed573'}; font-weight: bold;">${pred.label}</span></div>
+                            <div class="metric">⚡ Performance: ${pred.confidence >= 90 ? 'Excellent' : (pred.confidence >= 70 ? 'Good' : 'Moderate')}</div>
+                            ${isBest ? '<div class="best-badge">🏆 Best Performing Model</div>' : ''}
+                        </div>
+                    `;
+                }
+            }
+            
+            comparisonDiv.innerHTML = html;
+        }
+        
+        function generateDetailedExplanation() {
+            const final = predictions.final;
+            const models = ['convnext', 'vit', 'swin'];
+            
+            // Find best model
+            let bestModel = null;
+            let bestConfidence = 0;
+            let bestModelName = '';
+            const modelFullNames = {
+                'convnext': 'ConvNeXt-Tiny',
+                'vit': 'Vision Transformer (ViT)',
+                'swin': 'Swin Transformer'
+            };
+            
+            for (const model of models) {
+                if (predictions[model] && predictions[model].confidence > bestConfidence) {
+                    bestConfidence = predictions[model].confidence;
+                    bestModel = model;
+                    bestModelName = modelFullNames[model];
+                }
+            }
+            
+            // Calculate average confidence
+            let avgConfidence = 0;
+            let count = 0;
+            for (const model of models) {
+                if (predictions[model]) {
+                    avgConfidence += predictions[model].confidence;
+                    count++;
+                }
+            }
+            avgConfidence = (avgConfidence / count).toFixed(1);
+            
+            let explanation = '';
+            let recommendation = '';
+            
+            if (final.label === 'Tuberculosis') {
+                explanation = `
+                    <strong>🔴 CLINICAL FINDINGS:</strong><br>
+                    • The ensemble analysis indicates a <strong>${final.label}</strong> diagnosis with ${final.confidence}% confidence.<br>
+                    • ${final.agreement_count} out of 3 models detected TB indicators.<br>
+                    • The ${bestModelName} model shows the highest confidence at ${bestConfidence}%, making it the most reliable predictor for this case.<br>
+                    • Average confidence across all models: ${avgConfidence}%<br>
+                    <br>
+                    <strong>🔬 XAI INTERPRETATION:</strong><br>
+                    • Grad-CAM++ heatmaps highlight regions of interest that may indicate TB-related abnormalities such as infiltrates, cavities, or nodules.<br>
+                    • Captum Integrated Gradients shows which pixels most influenced the model's decision.<br>
+                    • Occlusion maps identify critical areas where removing information changes the prediction.<br>
+                    <br>
+                    <strong>⚠️ RECOMMENDED ACTIONS:</strong><br>
+                    • Immediate clinical correlation with patient symptoms (cough, fever, weight loss, night sweats).<br>
+                    • Confirmatory testing recommended: Sputum smear microscopy, GeneXpert MTB/RIF, or culture.<br>
+                    • Consider chest CT for detailed evaluation if clinical suspicion is high.<br>
+                    • Infectious disease consultation advised.<br>
+                `;
+                recommendation = 'High Priority - Immediate clinical correlation and confirmatory testing required.';
+            } else {
+                explanation = `
+                    <strong>🟢 CLINICAL FINDINGS:</strong><br>
+                    • The ensemble analysis indicates a <strong>${final.label}</strong> finding with ${final.confidence}% confidence.<br>
+                    • ${final.agreement_count} out of 3 models classified this as normal.<br>
+                    • The ${bestModelName} model shows the highest confidence at ${bestConfidence}%.<br>
+                    • Average confidence across all models: ${avgConfidence}%<br>
+                    <br>
+                    <strong>🔬 XAI INTERPRETATION:</strong><br>
+                    • Grad-CAM++ heatmaps show typical lung field patterns without significant abnormalities.<br>
+                    • The visual explanations highlight normal anatomical structures such as the trachea, heart silhouette, and diaphragm.<br>
+                    • Low activation in abnormal regions suggests no pathological findings detected.<br>
+                    <br>
+                    <strong>✅ RECOMMENDED ACTIONS:</strong><br>
+                    • Routine follow-up as clinically indicated.<br>
+                    • Monitor for any developing symptoms.<br>
+                    • Regular screening if patient is in high-risk category (immunocompromised, close contact with TB patients).<br>
+                    • Consider follow-up imaging in 6-12 months for high-risk patients.<br>
+                `;
+                recommendation = 'Routine follow-up recommended. No immediate intervention required.';
+            }
+            
+            document.getElementById('explanationText').innerHTML = `
+                ${explanation}
+                <div class="recommendation">
+                    <strong>💡 CLINICAL RECOMMENDATION:</strong><br>
+                    ${recommendation}
+                </div>
+                <br>
+                <strong>📊 MODEL PERFORMANCE SUMMARY:</strong><br>
+                • Best performing model: <strong>${bestModelName}</strong> with ${bestConfidence}% confidence<br>
+                • Ensemble confidence: ${predictions.ensemble ? predictions.ensemble.confidence : 'N/A'}%<br>
+                • Model agreement: ${final.agreement_count}/3 models agree on ${final.label}<br>
+            `;
+        }
+        
+        async function loadAllXAI() {
+            await loadAllXAIForModel('convnext');
+            await loadAllXAIForModel('vit');
+            await loadAllXAIForModel('swin');
+            alert('✅ All XAI visualizations loaded and cached! Switching tabs will now be instant.');
+        }
+        
+        async function loadAllXAIForModel(modelName) {
+            await loadGradCAM(modelName);
+            await loadCaptum(modelName);
+        }
+        
+        async function loadGradCAM(modelName) {
+            const container = document.getElementById(`${modelName}-gradcam`);
+            if (!container) return;
+            
+            if (xaiCache[`${modelName}-gradcam`]) {
+                container.innerHTML = `<img src="${xaiCache[`${modelName}-gradcam`]}" class="xai-image" alt="Grad-CAM++">`;
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Generating Grad-CAM++ heatmap...</p><p style="font-size:0.8rem;">⏱️ First generation takes 10-20 seconds</p></div>';
+            
+            try {
+                const response = await fetch(`/xai/gradcam/${modelName}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.explanation) {
+                    xaiCache[`${modelName}-gradcam`] = data.explanation;
+                    container.innerHTML = `<img src="${data.explanation}" class="xai-image" alt="Grad-CAM++"><div class="cached-badge">✓ Cached</div>`;
+                } else {
+                    container.innerHTML = '<div class="error">❌ Failed to generate heatmap</div>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function loadCaptum(modelName) {
+            const container = document.getElementById(`${modelName}-captum`);
+            if (!container) return;
+            
+            if (xaiCache[`${modelName}-captum`]) {
+                container.innerHTML = `<img src="${xaiCache[`${modelName}-captum`]}" class="xai-image" alt="Captum IG"><div class="cached-badge">✓ Cached</div>`;
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>Loading Captum Integrated Gradients...</p></div>';
+            
+            try {
+                const response = await fetch(`/xai/captum/${modelName}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.explanation) {
+                    xaiCache[`${modelName}-captum`] = data.explanation;
+                    container.innerHTML = `<img src="${data.explanation}" class="xai-image" alt="Captum IG"><div class="cached-badge">✓ Cached</div>`;
+                } else {
+                    container.innerHTML = '<div class="error">❌ Failed to load Captum IG</div>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        async function generateOcclusion(modelName) {
+            const container = document.getElementById(`${modelName}-occlusion`);
+            if (!container) return;
+            
+            if (xaiCache[`${modelName}-occlusion`]) {
+                container.innerHTML = `<img src="${xaiCache[`${modelName}-occlusion`]}" class="xai-image" alt="Occlusion"><div class="cached-badge">✓ Cached</div>`;
+                return;
+            }
+            
+            container.innerHTML = '<div class="loading"><div class="spinner"></div><p>⏱️ Generating Occlusion Map...</p><p>This takes 45-60 seconds. Please wait...</p></div>';
+            
+            try {
+                const response = await fetch(`/xai/occlusion/${modelName}`, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.explanation) {
+                    xaiCache[`${modelName}-occlusion`] = data.explanation;
+                    container.innerHTML = `<img src="${data.explanation}" class="xai-image" alt="Occlusion"><div class="cached-badge">✓ Cached</div>`;
+                } else {
+                    container.innerHTML = '<div class="error">❌ Failed to generate occlusion map</div>';
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Tab switching with caching
+        const tabs = document.querySelectorAll('.tab-btn');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const modelName = tab.dataset.model;
+                
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                document.querySelectorAll('.xai-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(modelName).classList.add('active');
+                
+                // Load if not already loaded
+                if (!xaiCache[`${modelName}-gradcam`]) {
+                    loadAllXAIForModel(modelName);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
